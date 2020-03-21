@@ -1,9 +1,15 @@
-from django.shortcuts import render
-from e_cloud_finance_module.forms import UserForm,UserProfileInfoForm
+# from django.shortcuts import render
+from e_cloud_finance_module.forms import UserProfileInfoForm
 from django.contrib.auth import authenticate, login, logout
 from django.http import HttpResponseRedirect, HttpResponse
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
+
+from django.contrib.auth.models import User
+from django.shortcuts import render
+from django.http import HttpResponseRedirect
+from .forms import *
+
 
 def index(request):
     return render(request,'ecloud/index.html')
@@ -14,31 +20,54 @@ def special(request):
 def user_logout(request):
     logout(request)
     return HttpResponseRedirect(reverse('index'))
-def register(request):
-    registered = False
-    if request.method == 'POST':
-        user_form = UserForm(data=request.POST)
-        profile_form = UserProfileInfoForm(data=request.POST)
-        if user_form.is_valid() and profile_form.is_valid():
-            user = user_form.save()
-            user.set_password(user.password)
-            user.save()
-            profile = profile_form.save(commit=False)
-            profile.user = user
-            if 'profile_pic' in request.FILES:
-                print('found it')
-                profile.profile_pic = request.FILES['profile_pic']
-            profile.save()
-            registered = True
-        else:
-            print(user_form.errors,profile_form.errors)
+
+def register(HttpResponse):
+    # if this is a POST request we need to process the form data
+    return render(HttpResponse,'ecloud/registration.html')
+    if HttpResponse.method == 'POST':
+        # create a form instance and populate it with data from the request:
+        form = RegisterForm(HttpResponse.POST)
+        # check whether it's valid:
+        if form.is_valid():
+            if User.objects.filter(username=form.cleaned_data['username']).exists():
+                return render(HttpResponse, template, {
+                    'form': form,
+                    'error_message': 'Username already exists.'
+                })
+            elif User.objects.filter(email=form.cleaned_data['email']).exists():
+                return render(request, template, {
+                    'form': form,
+                    'error_message': 'Email already exists.'
+                })
+            elif form.cleaned_data['password'] != form.cleaned_data['password_repeat']:
+                return render(request, template, {
+                    'form': form,
+                    'error_message': 'Passwords do not match.'
+                })
+            else:
+                # Create the user:
+                user = User.objects.create_user(
+                    form.cleaned_data['username'],
+                    form.cleaned_data['email'],
+                    form.cleaned_data['password']
+                )
+                user.first_name = form.cleaned_data['first_name']
+                user.last_name = form.cleaned_data['last_name']
+                user.phone_number = form.cleaned_data['phone_number']
+                user.save()
+               
+                # Login the user
+                login(request, user)
+               
+                # redirect to accounts page:
+                return HttpRedirect('register')
+
+   # No post data availabe, let's just show the page.
     else:
-        user_form = UserForm()
-        profile_form = UserProfileInfoForm()
-    return render(request,'ecloud/registration.html',
-                          {'user_form':user_form,
-                           'profile_form':profile_form,
-                           'registered':registered})
+        form = RegisterForm()
+
+    return render(request, template, {'form': form})
+
 def user_login(request):
     if request.method == 'POST':
         username = request.POST.get('username')

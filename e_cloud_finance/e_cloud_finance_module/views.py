@@ -85,3 +85,6 @@ def user_login(request):
             return HttpResponse("Invalid login details given")
     else:
         return render(request, 'ecloud/login.html', {})
+
+def contacts(request):
+    return render(request,'ecloud/contacts.html')
